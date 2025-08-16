@@ -1,0 +1,10 @@
+# Requirements for Multi-Agent Board Emulation System
+# Core dependencies for LLM integration
+langchain-openai>=0.1.0
+google-generativeai>=0.3.0
+
+# Optional: Biomni framework (if available)
+# biomni
+
+# Additional utilities
+python-dotenv>=1.0.0
