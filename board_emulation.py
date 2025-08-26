@@ -14,6 +14,7 @@ Requirements:
 
 """
 
+
 import os
 from typing import Dict, List, Any
 from dataclasses import dataclass
@@ -85,6 +86,7 @@ class MedicalAgent(ABC):
         self.name = name
         self.specialty = specialty
         self.llm = get_llm(llm_model, temperature=0.7, source="Gemini")
+        self.last_prompt = ""  # Store the last prompt sent
         
     @abstractmethod
     def analyze_case(self, case: PatientCase) -> str:
@@ -94,6 +96,10 @@ class MedicalAgent(ABC):
     def get_specialty_context(self) -> str:
         """Get specialty-specific context for the agent"""
         return f"You are a {self.specialty} with expertise in {self.specialty.lower()} analysis."
+    
+    def get_last_prompt(self) -> str:
+        """Get the last prompt sent to this agent (for debug purposes)"""
+        return self.last_prompt
 
 
 class Oncologist(MedicalAgent):
@@ -125,6 +131,9 @@ As an oncologist, focus on:
 
 Provide a concise, professional recommendation (2-3 sentences):
 """
+        
+        # Store the prompt for debug purposes
+        self.last_prompt = prompt
         
         try:
             response = self.llm.invoke(prompt)
@@ -163,6 +172,9 @@ As a radiologist, focus on:
 Provide a concise, professional recommendation (2-3 sentences):
 """
         
+        # Store the prompt for debug purposes
+        self.last_prompt = prompt
+        
         try:
             response = self.llm.invoke(prompt)
             return response.content
@@ -200,6 +212,9 @@ As a pathologist, focus on:
 Provide a concise, professional recommendation (2-3 sentences):
 """
         
+        # Store the prompt for debug purposes
+        self.last_prompt = prompt
+        
         try:
             response = self.llm.invoke(prompt)
             return response.content
@@ -210,15 +225,43 @@ Provide a concise, professional recommendation (2-3 sentences):
 class TumorBoard:
     """Tumor board that coordinates multiple medical agents"""
     
-    def __init__(self):
+    def __init__(self, debug_mode=False):
         self.agents = [
             Oncologist(),
             Radiologist(),
             Pathologist()
         ]
+        self.debug_mode = debug_mode
+    
+    def _display_case_summary(self, case: PatientCase):
+        """Display a clear summary of the patient case being reviewed"""
+        print(f"\n{'='*60}")
+        print(f"PATIENT CASE SUMMARY - {case.patient_id}")
+        print(f"{'='*60}")
+        print(f"📋 Patient Demographics:")
+        print(f"   • Age: {case.age} years old")
+        print(f"   • Gender: {case.gender}")
+        print(f"   • Tumor Size: {case.tumor_size} cm")
+        print(f"   • Tumor Stage: {case.tumor_stage}")
+        print(f"\n🔬 Clinical Findings:")
+        print(f"   • Biopsy Result: {case.biopsy_result}")
+        print(f"   • Imaging Result: {case.imaging_result}")
+        print(f"\n💊 Symptoms: {', '.join(case.symptoms)}")
+        print(f"📚 Medical History: {', '.join(case.medical_history)}")
+        print(f"{'='*60}")
+        
+        print(f"\n🤔 QUESTIONS TO BE ANSWERED:")
+        print(f"   • Oncologist: Treatment plan, chemotherapy/radiation, surgical options, prognosis")
+        print(f"   • Radiologist: Imaging interpretation, tumor characteristics, metastasis assessment")
+        print(f"   • Pathologist: Biopsy interpretation, tumor grading, molecular markers, staging")
+        print(f"   • Board Chair: Consolidate all recommendations into final treatment decision")
+        print(f"{'='*60}")
     
     def review_case(self, case: PatientCase) -> Dict[str, Any]:
         """Review a patient case with all agents"""
+        # First display the case summary for clarity
+        self._display_case_summary(case)
+        
         print(f"\n{'='*60}")
         print(f"TUMOR BOARD REVIEW - Patient {case.patient_id}")
         print(f"{'='*60}")
@@ -229,13 +272,38 @@ class TumorBoard:
         for agent in self.agents:
             print(f"\n{agent.specialty} Analysis:")
             print(f"{'-'*40}")
+            
+            # Show what question is being asked to this agent
+            print(f"🤔 Question for {agent.specialty}:")
+            print(f"   Analyzing case and providing {agent.specialty.lower()} recommendations...")
+            
+            # If debug mode is enabled, show the actual prompt
+            if self.debug_mode:
+                print(f"\n🔍 DEBUG - Prompt sent to {agent.specialty}:")
+                print(f"   {self._get_agent_prompt(agent, case)[:200]}...")
+            
             recommendation = agent.analyze_case(case)
             recommendations[agent.specialty] = recommendation
-            print(f"Recommendation: {recommendation}")
+            print(f"\n💡 Recommendation: {recommendation}")
         
         # Generate board decision
+        print(f"\n{'='*40}")
+        print("BOARD CHAIR DECISION")
+        print(f"{'='*40}")
+        print("🤔 Question for Board Chair:")
+        print("   Consolidating all specialist recommendations into final treatment decision...")
+        
+        # If debug mode is enabled, show the actual prompt
+        if self.debug_mode:
+            print(f"\n🔍 DEBUG - Prompt sent to Board Chair:")
+            print(f"   {self.get_last_board_prompt()[:200]}...")
+        
         board_decision = self._generate_board_decision(recommendations)
         recommendations['board_decision'] = board_decision
+        
+        # If debug mode is enabled, show full prompts
+        if self.debug_mode:
+            self._display_full_prompts(case)
         
         return recommendations
     
@@ -257,6 +325,9 @@ As the board chair, provide:
 Provide a concise, actionable final decision:
 """
             
+            # Store the prompt for debug purposes
+            self.last_board_prompt = prompt
+            
             # Use the first available agent's LLM for board decision
             llm = self.agents[0].llm
             response = llm.invoke(prompt)
@@ -264,6 +335,34 @@ Provide a concise, actionable final decision:
             
         except Exception as e:
             return f"Error generating board decision: {str(e)}"
+    
+    def get_last_board_prompt(self) -> str:
+        """Get the last prompt sent to the board chair (for debug purposes)"""
+        return getattr(self, 'last_board_prompt', 'No board prompt available')
+
+    def _get_agent_prompt(self, agent: MedicalAgent, case: PatientCase) -> str:
+        """Get the actual prompt being sent to an agent (for debug purposes)"""
+        # This method extracts the prompt that would be sent to the agent
+        # We'll need to modify the agent classes to expose their prompts
+        if hasattr(agent, 'get_last_prompt'):
+            return agent.get_last_prompt()
+        else:
+            return f"Prompt for {agent.specialty} analysis of case {case.patient_id}"
+
+    def _display_full_prompts(self, case: PatientCase):
+        """Display full prompts sent to each agent and the board chair (debug mode)"""
+        print(f"\n{'='*60}")
+        print("DEBUG MODE - FULL PROMPTS")
+        print(f"{'='*60}")
+        
+        for agent in self.agents:
+            print(f"\n📝 {agent.specialty} Full Prompt:")
+            print(f"{'-'*50}")
+            print(agent.get_last_prompt())
+        
+        print(f"\n📝 Board Chair Full Prompt:")
+        print(f"{'-'*50}")
+        print(self.get_last_board_prompt())
 
 
 def create_sample_case() -> PatientCase:
@@ -293,9 +392,16 @@ def main():
         print("export GEMINI_API_KEY='your_api_key_here'")
         return
     
+    # Check for debug mode argument
+    import sys
+    debug_mode = "--debug" in sys.argv or "-d" in sys.argv
+    
+    if debug_mode:
+        print("🔍 Debug mode enabled - will show detailed prompts and analysis")
+    
     try:
         # Initialize tumor board
-        board = TumorBoard()
+        board = TumorBoard(debug_mode=debug_mode)
         
         # Create sample case
         case = create_sample_case()
@@ -310,8 +416,20 @@ def main():
         print(results['board_decision'])
         
         print(f"\n{'='*60}")
+        print("SUMMARY OF QUESTIONS ANSWERED")
+        print(f"{'='*60}")
+        print(f"✅ Oncologist Question: Treatment recommendations provided")
+        print(f"✅ Radiologist Question: Imaging insights provided")
+        print(f"✅ Pathologist Question: Pathological analysis provided")
+        print(f"✅ Board Chair Question: Final consolidated decision provided")
+        
+        print(f"\n{'='*60}")
         print("SIMULATION COMPLETE")
         print(f"{'='*60}")
+        
+        if not debug_mode:
+            print("\n💡 Tip: Run with --debug flag to see detailed prompts:")
+            print("   python board_emulation.py --debug")
         
     except Exception as e:
         print(f"❌ Error running simulation: {str(e)}")
