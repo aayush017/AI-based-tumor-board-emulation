@@ -1,0 +1,11 @@
+# Patient Case Data - Colon Cancer
+# This is a comment line that will be ignored
+patient_id=CASE-2024-003
+age=72
+gender=female
+tumor_size=2.8
+tumor_stage=T2N0M0
+biopsy_result=Well-differentiated adenocarcinoma, grade 1, no lymphovascular invasion
+imaging_result=2.8 cm polypoid mass in sigmoid colon, no lymph node involvement, clear margins
+symptoms=rectal bleeding, mild abdominal discomfort, no weight loss
+medical_history=hyperlipidemia, post-menopausal, no family history of cancer, regular colonoscopy screening

@@ -1,0 +1,11 @@
+{
+    "patient_id": "CASE-2024-002",
+    "age": 65,
+    "gender": "male",
+    "tumor_size": 4.5,
+    "tumor_stage": "T3N2M0",
+    "biopsy_result": "Invasive adenocarcinoma, grade 3, KRAS mutation positive, microsatellite stable",
+    "imaging_result": "4.5 cm irregular mass in right colon, multiple enlarged regional lymph nodes, no distant metastases",
+    "symptoms": ["abdominal pain", "weight loss", "fatigue", "change in bowel habits"],
+    "medical_history": ["hypertension", "type 2 diabetes", "previous appendectomy", "family history of colorectal cancer"]
+}
